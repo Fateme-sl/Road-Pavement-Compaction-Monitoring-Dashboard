@@ -1,0 +1,518 @@
+
+
+######## prepare figures and plots so we can refer to them in layout#######
+import matplotlib.pyplot as plt
+import folium
+import contextily as cx
+import ipywidgets as widgets
+from folium.plugins import Fullscreen
+from folium.plugins import MousePosition
+from dash.dependencies import Input, Output
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.io as pio
+from plotly.subplots import make_subplots
+import base64
+import io
+import plotly.io as pio
+import dash
+from dash import dcc
+from dash import html
+import pandas as pd
+import jupyter_dash
+from jupyter_dash import JupyterDash
+import dash
+import folium
+from folium import plugins
+import pandas as pd
+import geopandas as gpd
+import requests
+import json
+import matplotlib
+from dash import Dash
+from dash import Dash, dcc, html, Input, Output
+import plotly.graph_objects as go
+
+
+
+
+
+
+
+########_________________________________________Layout__________________________________########
+
+
+
+#app = dash.Dash(__name__)
+
+from dash import Dash, dcc, html, Input, Output
+import plotly.graph_objects as go
+
+app = Dash(__name__)
+
+app.layout = html.Div(
+    style={
+        'backgroundColor': '#EBF6FC',
+        'maxWidth': '1100px',
+        'margin': '0 auto',
+        'padding': '13px'
+    },
+    children=[
+        html.H1('Compaction Data Analysis Dashboard', style={
+            'textAlign': 'center',
+            'marginTop': '0',
+            'backgroundColor': '#FFD98E',
+            'border': '2px solid black',
+            'padding': '6px',
+            'fontSize': '22px'
+        }),
+        
+
+        dcc.Tabs(id='project-tabs', value='project1', children=[
+
+            # === Project 1 Tab ===
+            
+            html.Div([
+    html.H3("📤 Upload Required Datasets", style={'textAlign': 'center'}),
+    
+    html.Div([
+        html.Label("Upload Temperature Data CSV:"),
+        dcc.Upload(
+            id='upload-temp-data',
+            children=html.Div(['📁 Drag & Drop or ', html.A('Select File')]),
+            style={
+                'width': '100%', 'height': '50px', 'lineHeight': '50px',
+                'borderWidth': '1px', 'borderStyle': 'dashed',
+                'borderRadius': '5px', 'textAlign': 'center',
+                'marginBottom': '10px', 'backgroundColor': '#f9f9f9'
+            },
+            multiple=False
+        ),
+    ]),
+
+    html.Div([
+        html.Label("Upload GPS Data CSV:"),
+        dcc.Upload(
+            id='upload-gps-data',
+            children=html.Div(['📁 Drag & Drop or ', html.A('Select File')]),
+            style={
+                'width': '100%', 'height': '50px', 'lineHeight': '50px',
+                'borderWidth': '1px', 'borderStyle': 'dashed',
+                'borderRadius': '5px', 'textAlign': 'center',
+                'marginBottom': '10px', 'backgroundColor': '#f9f9f9'
+            },
+            multiple=False
+        ),
+    ]),
+
+    html.Div([
+        html.Label("Upload Cooling Curve Data CSV:"),
+        dcc.Upload(
+            id='upload-cooling-data',
+            children=html.Div(['📁 Drag & Drop or ', html.A('Select File')]),
+            style={
+                'width': '100%', 'height': '50px', 'lineHeight': '50px',
+                'borderWidth': '1px', 'borderStyle': 'dashed',
+                'borderRadius': '5px', 'textAlign': 'center',
+                'marginBottom': '20px', 'backgroundColor': '#f9f9f9'
+            },
+            multiple=False
+        ),
+    ]),
+
+    html.Div(id='upload-status'),
+    
+    # Store uploaded data for use in callbacks
+    dcc.Store(id='stored-temp'),
+    dcc.Store(id='stored-gps'),
+    dcc.Store(id='stored-cooling'),
+]),
+
+            dcc.Tab(label='Project 1', value='project1', children=[
+                   
+                html.Div([
+                    html.H2("🌤️  Weather Conditions during the construction", style={
+                        'textAlign': 'center',
+                        'color': '#004080',
+                        'marginBottom': '10px'
+                    }),
+                
+                    html.Ul([
+                        html.Li("🌡️ Temperature: 18.5 °C", style={'margin': '6px 0'}),
+                        html.Li("💨 Wind Speed: 2.2 m/s", style={'margin': '6px 0'}),
+                        html.Li("💧 Humidity: 45%", style={'margin': '6px 0'}),
+                        html.Li("☀️ Conditions: Clear skies", style={'margin': '6px 0'})
+                    ], style={
+                        'listStyleType': 'none',
+                        'paddingLeft': 0,
+                        'fontSize': '17px',
+                        'color': '#003366',
+                        'lineHeight': '1.8',
+                        'textAlign': 'center' 
+                    })
+                ], style={
+                    'border': '2px solid #66a3ff',
+                    'padding': '16px',
+                    'margin': '16px 0',
+                    'backgroundColor': '#e6f2ff',
+                    'borderRadius': '10px',
+                    'boxShadow': '0 4px 8px rgba(0,0,0,0.1)'
+                }),
+                html.Div([
+                        html.H2("📍 Project Location Map", style={'textAlign': 'center'}),
+                        html.Iframe(
+                            srcDoc=map_html_project1,
+                            width='100%',
+                            height='500px',
+                            style={'border': '1px solid #999', 'borderRadius': '8px'}
+                        )
+                    ], style={
+                        'border': '1px solid #999',
+                        'padding': '10px',
+                        'margin': '10px 0',
+                        'backgroundColor': '#f9f9f9',
+                        'borderRadius': '8px'
+                    }),
+
+
+                html.Div([
+                    html.H2("Geo-Referenced Temperature Contour Plot (TCP)", style={'textAlign': 'center'}),
+                    dcc.Graph(id='tcp-map-project1', figure=TCP1)
+                ], style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+                html.Div([
+                    html.H2("Time-Based TCP & Paver Speed Viewer", style={'textAlign': 'center'}),
+                    dcc.Dropdown(
+                        id='tcp-speed-dropdown-project1',
+                        options=[
+                            {'label': 'Time-Based TCP', 'value': 'tcp'},
+                            {'label': 'Paver Speed', 'value': 'speed'},
+                            {'label': 'Both Combined', 'value': 'both'}
+                        ],
+                        value='tcp',
+                        clearable=False,
+                        style={'width': '50%'}
+                    ),
+                    dcc.Graph(id='tcp-speed-combined-project1')
+                ], style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+                html.Div([
+                    html.H2("Statistical Process Control Dashboard"),
+                    dcc.Dropdown(
+                        id='chart-dropdown-project1',
+                        options=[
+                            {'label': 'R Control Chart', 'value': 'r'},
+                            {'label': 'Moving Average Chart', 'value': 'ma'},
+                            {'label': 'X Chart', 'value': 'x'}  # <-- Added X Chart option
+                        ],
+                        value='r',
+                        clearable=False,
+                        style={'width': '50%'}
+                    ),
+                    dcc.Graph(id='control-chart-display-project1'),
+                    dcc.Graph(id='control-chart-secondary-project1', style={'display': 'none'})
+                ],
+                    style={
+                        'border': '1px solid #999',
+                        'padding': '10px',
+                        'margin': '10px 0',
+                        'backgroundColor': '#f9f9f9',
+                        'borderRadius': '8px'
+                    }),
+
+                html.Div([
+                    html.H2("Asphalt Cooling Curve Viewer"),
+                    dcc.Dropdown(
+                        id='regression-dropdown-project1',
+                        options=[
+                            {'label': 'Polynomial Regression', 'value': 'polynomial'},
+                            {'label': 'Exponential Regression', 'value': 'exponential'}
+                        ],
+                        value='polynomial',
+                        clearable=False
+                    ),
+                    dcc.Graph(id='cooling-curve-graph-project1-loc1'),
+                    dcc.Graph(id='cooling-curve-graph-project1-loc2'),
+                    dcc.Graph(id='cooling-curve-graph-project1-loc3'),
+                ],
+                        style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+                html.Div(id='average-value-plot-project1')
+            ]),
+
+            # === Project 2 Tab ===
+            dcc.Tab(label='Project 2', value='project2', children=[
+               html.Div([
+                    html.H2("🌤️ Weather Conditions during the construction", style={
+                        'textAlign': 'center',
+                        'color': '#004080',
+                        'marginBottom': '10px'
+                    }),
+                
+                    html.Ul([
+                        html.Li("🌡️ Temperature: 21.5 °C", style={'margin': '6px 0'}),
+                        html.Li("💨 Wind Speed: 3.2 m/s", style={'margin': '6px 0'}),
+                        html.Li("💧 Humidity: 52%", style={'margin': '6px 0'}),
+                        html.Li("☀️ Conditions: Clear skies", style={'margin': '6px 0'})
+                    ], style={
+                        'listStyleType': 'none',
+                        'paddingLeft': 0,
+                        'fontSize': '17px',
+                        'color': '#003366',
+                        'lineHeight': '1.8',
+                        'textAlign': 'center' 
+                    })
+                ], style={
+                    'border': '2px solid #66a3ff',
+                    'padding': '16px',
+                    'margin': '16px 0',
+                    'backgroundColor': '#e6f2ff',
+                    'borderRadius': '10px',
+                    'boxShadow': '0 4px 8px rgba(0,0,0,0.1)'
+                }),
+                html.Div([
+                    html.H2("📍 Project Location Map", style={'textAlign': 'center'}),
+                    html.Iframe(
+                        srcDoc=map_html_project2,
+                        width='100%',
+                        height='500px',
+                        style={'border': '1px solid #999', 'borderRadius': '8px'}
+                    )
+                ], style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+
+                html.Div([
+                    html.H2("Geo-Referenced Temperature Contour Plot (TCP)", style={'textAlign': 'center'}),
+                    dcc.Graph(id='tcp-map-project2', figure=TCP2)
+                ], style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+                html.Div([
+                    html.H2("Time-Based TCP & Paver Speed Viewer",style={'textAlign': 'center'}),
+                    dcc.Dropdown(
+                        id='tcp-speed-dropdown-project2',
+                        options=[
+                            {'label': 'Time-Based TCP', 'value': 'tcp'},
+                            {'label': 'Paver Speed', 'value': 'speed'},
+                            {'label': 'Both Combined', 'value': 'both'}
+                        ],
+                        value='tcp',
+                        clearable=False,
+                        style={'width': '50%'}
+                    ),
+                    dcc.Graph(id='tcp-speed-combined-project2')
+                ],
+                        style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+                html.Div([
+                    html.H2("Statistical Process Control Dashboard",style={'textAlign': 'center'}),
+                    dcc.Dropdown(
+                        id='chart-dropdown-project2',
+                        options=[
+                            {'label': 'R Control Chart', 'value': 'r'},
+                            {'label': 'Moving Average Chart', 'value': 'ma'},
+                            {'label': 'X Chart', 'value': 'x'}  # <-- Added X Chart option
+                        ],
+                        value='r',
+                        clearable=False,
+                        style={'width': '50%'}
+                    ),
+                    dcc.Graph(id='control-chart-display-project2'),
+                    dcc.Graph(id='control-chart-secondary-project2', style={'display': 'none'})
+                ],
+                        style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+                html.Div([
+                    html.H2("Asphalt Cooling Curve Viewer",style={'textAlign': 'center'}),
+                    dcc.Dropdown(
+                        id='regression-dropdown-project2',
+                        options=[
+                            {'label': 'Polynomial Regression', 'value': 'polynomial'},
+                            {'label': 'Exponential Regression', 'value': 'exponential'}
+                        ],
+                        value='polynomial',
+                        clearable=False
+                    ),
+                    dcc.Graph(id='cooling-curve-graph-project2-loc1'),
+                    dcc.Graph(id='cooling-curve-graph-project2-loc2'),
+                ],
+                        style={
+                    'border': '1px solid #999',
+                    'padding': '10px',
+                    'margin': '10px 0',
+                    'backgroundColor': '#f9f9f9',
+                    'borderRadius': '8px'
+                }),
+
+                html.Div(id='average-value-plot-project2')
+            ]),
+        ])
+    ]
+)
+
+
+
+
+
+
+
+@app.callback(
+    # Project 1 Outputs
+    Output('cooling-curve-graph-project1-loc1', 'figure'),
+    Output('cooling-curve-graph-project1-loc2', 'figure'),
+    Output('cooling-curve-graph-project1-loc3', 'figure'),
+    Output('control-chart-display-project1', 'figure'),
+    Output('control-chart-secondary-project1', 'figure'),
+    Output('control-chart-secondary-project1', 'style'),
+    Output('tcp-speed-combined-project1', 'figure'),
+
+
+    # Project 2 Outputs
+    Output('cooling-curve-graph-project2-loc1', 'figure'),
+    Output('cooling-curve-graph-project2-loc2', 'figure'),
+    Output('control-chart-display-project2', 'figure'),
+    Output('control-chart-secondary-project2', 'figure'),
+    Output('control-chart-secondary-project2', 'style'),
+    Output('tcp-speed-combined-project2', 'figure'),
+
+    # Inputs
+    Input('regression-dropdown-project1', 'value'),
+    Input('chart-dropdown-project1', 'value'),
+    Input('tcp-speed-dropdown-project1', 'value'),
+    Input('regression-dropdown-project2', 'value'),
+    Input('chart-dropdown-project2', 'value'),
+    Input('tcp-speed-dropdown-project2', 'value')
+)
+def update_project_graphs(reg1, chart1, tcp_speed1, reg2, chart2, tcp_speed2):
+    # --- Project 1 Cooling Curves ---
+    if reg1 == 'polynomial':
+        cooling_fig1_loc1 = cooling_poly1
+        cooling_fig1_loc2 = cooling_poly1_loc2
+        cooling_fig1_loc3 = cooling_poly1_loc3
+    else:
+        cooling_fig1_loc1 = cooling_expo1
+        cooling_fig1_loc2 = cooling_expo1_loc2
+        cooling_fig1_loc3 = cooling_expo1_loc3
+
+    # --- Project 1 Control Charts ---
+    if chart1 == 'r':
+        chart_main_1 = fig_r_full1
+        chart_secondary_1 = fig_r_sample1
+        style_1 = {'display': 'block'}
+    elif chart1 == 'ma':
+        chart_main_1 = moving_full1
+        chart_secondary_1 = moving_sample1
+        style_1 = {'display': 'block'}
+    elif chart1 == 'x':  # New chart type added
+        chart_main_1 = fig_x_full1
+        chart_secondary_1 = fig_x_sample1
+        style_1 = {'display': 'block'}
+    else:
+        chart_main_1 = chart_secondary_1 = go.Figure()
+        style_1 = {'display': 'none'}
+
+    # --- Project 1 TCP/Speed ---
+    if tcp_speed1 == 'tcp':
+        tcp_fig_1 = fig_time_tcp1
+    elif tcp_speed1 == 'speed':
+        tcp_fig_1 = fig_paver_speed1
+    elif tcp_speed1 == 'both':
+        tcp_fig_1 = fig_tcp_speed_combined1
+    else:
+        tcp_fig_1 = go.Figure()
+
+    # --- Project 2 Cooling Curves ---
+    if reg2 == 'polynomial':
+        cooling_fig2_loc1 = cooling_poly2
+        cooling_fig2_loc2 = cooling_poly2_loc2
+    else:
+        cooling_fig2_loc1 = cooling_expo2
+        cooling_fig2_loc2 = cooling_expo2_loc2
+
+    # --- Project 2 Control Charts ---
+    if chart2 == 'r':
+        chart_main_2 = fig_r_full2
+        chart_secondary_2 = fig_r_sample2
+        style_2 = {'display': 'block'}
+    elif chart2 == 'ma':
+        chart_main_2 = moving_full2
+        chart_secondary_2 = moving_sample2
+        style_2 = {'display': 'block'}
+    elif chart2 == 'x':  # New chart type added
+        chart_main_2 = fig_x_full2
+        chart_secondary_2 = fig_x_sample2
+        style_2 = {'display': 'block'}
+    else:
+        chart_main_2 = chart_secondary_2 = go.Figure()
+        style_2 = {'display': 'none'}
+
+    # --- Project 2 TCP/Speed ---
+    if tcp_speed2 == 'tcp':
+        tcp_fig_2 = fig_time_tcp2
+    elif tcp_speed2 == 'speed':
+        tcp_fig_2 = fig_paver_speed2
+    elif tcp_speed2 == 'both':
+        tcp_fig_2 = fig_tcp_speed_combined2
+    else:
+        tcp_fig_2 = go.Figure()
+
+
+    return (
+        cooling_fig1_loc1, cooling_fig1_loc2, cooling_fig1_loc3,
+        chart_main_1, chart_secondary_1, style_1, tcp_fig_1,
+        cooling_fig2_loc1, cooling_fig2_loc2,
+        chart_main_2, chart_secondary_2, style_2, tcp_fig_2,
+       
+    )
+
+
+
+app.run(port=8081, debug=True)
+
+
+
+
+
+
